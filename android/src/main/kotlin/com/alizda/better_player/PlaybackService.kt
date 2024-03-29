@@ -1,33 +1,38 @@
 package com.alizda.better_player
 
 import android.content.Intent
-import androidx.media3.exoplayer.ExoPlayer
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 class PlaybackService : MediaSessionService() {
-    private var mediaSession: MediaSession? = null
-    private var player: ExoPlayer? = null
-    // If desired, validate the controller before returning the media session
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
-        mediaSession
+    lateinit var mediaSession: MediaSession
 
-    // Create your player and media session in the onCreate lifecycle event
-    override fun onCreate() {
-        super.onCreate()
-        player = ExoPlayer.Builder(this).build()
-        mediaSession = MediaSession.Builder(this, player!!).build()
-    }
+    lateinit var notificationManager: BetterPlayerMediaNotificationManager
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        notificationManager.startNotificationService(
+            mediaSessionService = this,
+            mediaSession = mediaSession
+        )
+
         return super.onStartCommand(intent, flags, startId)
     }
-    // Remember to release the player and media session in onDestroy
+
     override fun onDestroy() {
-        mediaSession?.run {
-            player.release()
-            release()
-            mediaSession = null
-        }
         super.onDestroy()
+        mediaSession.run {
+            release()
+            if (player.playbackState != Player.STATE_IDLE) {
+                player.seekTo(0)
+                player.playWhenReady = false
+                player.stop()
+            }
+        }
     }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
+        mediaSession
 }

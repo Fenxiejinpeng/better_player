@@ -65,9 +65,10 @@ android {
         implementation("androidx.media3:media3-common:$media3Version")
         implementation "androidx.media3:media3-session:$media3Version"
         implementation("com.github.bumptech.glide:glide:4.15.1")
-
+        implementation("androidx.legacy:legacy-support-v4:1.0.0") // Needed MediaSessionCompat.Token
         implementation "androidx.annotation:annotation:$annotationVersion"
         implementation "androidx.work:work-runtime:$workVersion"
+        implementation("androidx.legacy:legacy-support-v4:1.0.0")
     }
 
     testOptions {

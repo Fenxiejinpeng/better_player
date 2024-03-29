@@ -99,7 +99,6 @@ internal class BetterPlayer(
     private val customDefaultLoadControl: CustomDefaultLoadControl =
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
-    private var backplay: Boolean = false
 
     init {
         val loadBuilder = DefaultLoadControl.Builder()
@@ -229,7 +228,6 @@ internal class BetterPlayer(
     ) {
 
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
         val mediaDescriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter = object :
             PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): String {
@@ -237,7 +235,18 @@ internal class BetterPlayer(
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                return controllerFuture.get().sessionActivity
+                val notificationIntent = Intent()
+                notificationIntent.setClassName(
+                    packageName,
+                    activityName
+                )
+                notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                return PendingIntent.getActivity(
+                    context, 0,
+                    notificationIntent,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
             }
 
             override fun getCurrentContentText(player: Player): String? {
@@ -296,8 +305,26 @@ internal class BetterPlayer(
                 setUsePreviousAction(false)
                 setUseStopAction(true)
             }
+            setupMediaSession(context)?.let {
+                setMediaSessionToken(it.sessionCompatToken)
+            }
         }
         exoPlayer?.seekTo(0)
+    }
+    @SuppressLint("InlinedApi")
+    fun setupMediaSession(context: Context?): MediaSession? {
+        context?.let {
+            if (this.mediaSession != null) {
+                this.mediaSession!!.release()
+            }
+            this.mediaSession = this.exoPlayer?.let { it1 ->
+                MediaSession.Builder(
+                    context,
+                    it1
+                ).build()
+            }
+        }
+        return this.mediaSession
     }
     private fun sendSeekToEvent(positionMs: Long) {
         exoPlayer?.seekTo(positionMs)
