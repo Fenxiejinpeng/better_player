@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -50,9 +49,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
-import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerNotificationManager
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
@@ -221,13 +218,15 @@ internal class BetterPlayer(
     }
 
     fun setupPlayerNotification(
-        context: Context, title: String, author: String?,
-        imageUrl: String?, notificationChannelName: String?,
+        context: Context,
+        title: String,
+        author: String?,
+        imageUrl: String?,
+        notificationChannelName: String?,
         activityName: String,
         packageName: String
     ) {
 
-        val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val mediaDescriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter = object :
             PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): String {
@@ -236,16 +235,16 @@ internal class BetterPlayer(
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
                 val notificationIntent = Intent()
-                notificationIntent.setClassName(
-                    packageName,
-                    activityName
-                )
-                notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                notificationIntent.setClassName(packageName, activityName)
+                notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                //设置跳转界面意图
+                //设置跳转界面意图
+                val flag =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_UPDATE_CURRENT
                 return PendingIntent.getActivity(
                     context, 0,
                     notificationIntent,
-                    PendingIntent.FLAG_IMMUTABLE
+                    flag
                 )
             }
 
@@ -301,8 +300,8 @@ internal class BetterPlayer(
             exoPlayer?.let {
 
                 setPlayer(ForwardingPlayer(exoPlayer))
-                setUseNextAction(false)
-                setUsePreviousAction(false)
+                setUseNextAction(true)
+                setUsePreviousAction(true)
                 setUseStopAction(true)
             }
             setupMediaSession(context)?.let {
