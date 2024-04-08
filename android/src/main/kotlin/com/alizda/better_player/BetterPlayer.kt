@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -235,9 +236,8 @@ internal class BetterPlayer(
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
                 val notificationIntent = Intent()
-                notificationIntent.setClassName(packageName, activityName)
+                notificationIntent.setComponent(ComponentName(packageName,activityName))
                 notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                //设置跳转界面意图
                 //设置跳转界面意图
                 val flag =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_UPDATE_CURRENT
