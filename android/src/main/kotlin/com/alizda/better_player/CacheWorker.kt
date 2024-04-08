@@ -3,6 +3,8 @@ package com.alizda.better_player
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import com.alizda.better_player.DataSourceUtils.isHTTP
 import com.alizda.better_player.DataSourceUtils.getUserAgent
 import com.alizda.better_player.DataSourceUtils.getDataSourceFactory
@@ -24,7 +26,7 @@ class CacheWorker(
 ) : Worker(context, params) {
     private var cacheWriter: CacheWriter? = null
     private var lastCacheReportIndex = 0
-    override fun doWork(): Result {
+    @OptIn(UnstableApi::class) override fun doWork(): Result {
         try {
             val data = inputData
             val url = data.getString(BetterPlayerPlugin.URL_PARAMETER)
@@ -84,7 +86,7 @@ class CacheWorker(
         return Result.success()
     }
 
-    override fun onStopped() {
+    @OptIn(UnstableApi::class) override fun onStopped() {
         try {
             cacheWriter?.cancel()
             super.onStopped()

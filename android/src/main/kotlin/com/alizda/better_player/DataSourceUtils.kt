@@ -1,6 +1,8 @@
 package com.alizda.better_player
 
 import android.net.Uri
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 
@@ -20,7 +22,7 @@ internal object DataSourceUtils {
         return userAgent
     }
 
-    @JvmStatic
+    @OptIn(UnstableApi::class) @JvmStatic
     fun getDataSourceFactory(
         userAgent: String?,
         headers: Map<String, String>?

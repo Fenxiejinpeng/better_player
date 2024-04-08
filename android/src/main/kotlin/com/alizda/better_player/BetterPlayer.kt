@@ -19,7 +19,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MediaMetadata.*
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -369,7 +369,7 @@ internal class BetterPlayer(
         if (!cacheKey.isNullOrEmpty()) {
             mediaItemBuilder.setCustomCacheKey(cacheKey)
         }
-        var mediaMetadata = MediaMetadata.Builder().setTitle(title).setSubtitle(author).setArtworkUri(Uri.parse(imageUrl)).build()
+        val mediaMetadata = Builder().setTitle(title).setSubtitle(author).setArtworkUri(Uri.parse(imageUrl)).build()
         val mediaItem = mediaItemBuilder.setMediaMetadata(mediaMetadata).build()
         var drmSessionManagerProvider: DrmSessionManagerProvider? = null
         drmSessionManager?.let { drmSessionManager ->
