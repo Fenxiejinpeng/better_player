@@ -2,22 +2,13 @@ package com.alizda.better_player
 
 
 import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import android.view.Surface
 import androidx.lifecycle.Observer
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata.*
 import androidx.media3.common.PlaybackException
@@ -50,8 +41,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.session.MediaSession
-import androidx.media3.ui.PlayerNotificationManager
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkInfo
@@ -59,10 +48,6 @@ import androidx.work.WorkManager
 import com.alizda.better_player.DataSourceUtils.getDataSourceFactory
 import com.alizda.better_player.DataSourceUtils.getUserAgent
 import com.alizda.better_player.DataSourceUtils.isHTTP
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.target.CustomTarget
-import com.bumptech.glide.request.transition.Transition
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.MethodChannel
@@ -88,9 +73,6 @@ internal class BetterPlayer(
     private var isInitialized = false
     private var key: String? = null
     private var surface: Surface? = null
-    private var playerNotificationManager: PlayerNotificationManager? = null
-    private var bitmap: Bitmap? = null
-    private var mediaSession: MediaSession? = null
     private var drmSessionManager: DrmSessionManager? = null
     private val workManager: WorkManager
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
@@ -109,13 +91,13 @@ internal class BetterPlayer(
         loadControl = loadBuilder.build()
         exoPlayer =
             ExoPlayer.Builder(context)
+                .setRenderersFactory(DefaultRenderersFactory(context))
                 .setMediaSourceFactory(DefaultMediaSourceFactory(context))
                 .setTrackSelector(trackSelector)
                 .setLoadControl(loadControl)
                 .build()
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
-        mediaSession = MediaSession.Builder(context, exoPlayer).build()
         setupVideoPlayer(eventChannel, textureEntry, result)
     }
 
@@ -216,128 +198,6 @@ internal class BetterPlayer(
         }
         exoPlayer?.prepare()
         result.success(null)
-    }
-
-    fun setupPlayerNotification(
-        context: Context,
-        title: String,
-        author: String?,
-        imageUrl: String?,
-        notificationChannelName: String?,
-        activityName: String,
-        packageName: String
-    ) {
-
-        val mediaDescriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter = object :
-            PlayerNotificationManager.MediaDescriptionAdapter {
-            override fun getCurrentContentTitle(player: Player): String {
-                return title
-            }
-
-            override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                val notificationIntent = Intent()
-                notificationIntent.setComponent(ComponentName(packageName,activityName))
-                notificationIntent.flags = (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                //设置跳转界面意图
-                val flag =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_UPDATE_CURRENT
-                return PendingIntent.getActivity(
-                    context, 0,
-                    notificationIntent,
-                    flag
-                )
-            }
-
-            override fun getCurrentContentText(player: Player): String? {
-                return author
-            }
-
-
-            override fun getCurrentLargeIcon(
-                player: Player,
-                callback: PlayerNotificationManager.BitmapCallback
-            ): Bitmap? {
-                Glide.with(context)
-                    .asBitmap()
-                    .load(imageUrl)
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .into(object : CustomTarget<Bitmap>() {
-                        override fun onLoadCleared(placeholder: Drawable?) = Unit
-                        override fun onResourceReady(
-                            resource: Bitmap,
-                            transition: Transition<in Bitmap>?
-                        ) {
-                            callback.onBitmap(resource)
-                        }
-                    })
-                return null
-            }
-        }
-        var playerNotificationChannelName = notificationChannelName
-        if (notificationChannelName == null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val importance = NotificationManager.IMPORTANCE_LOW
-                val channel = NotificationChannel(
-                    DEFAULT_NOTIFICATION_CHANNEL,
-                    DEFAULT_NOTIFICATION_CHANNEL, importance
-                )
-                channel.description = DEFAULT_NOTIFICATION_CHANNEL
-                val notificationManager = context.getSystemService(
-                    NotificationManager::class.java
-                )
-                notificationManager.createNotificationChannel(channel)
-                playerNotificationChannelName = DEFAULT_NOTIFICATION_CHANNEL
-            }
-        }
-
-        playerNotificationManager = PlayerNotificationManager.Builder(
-            context, NOTIFICATION_ID,
-            playerNotificationChannelName!!
-        ).setMediaDescriptionAdapter(mediaDescriptionAdapter).build()
-
-        playerNotificationManager?.apply {
-
-            exoPlayer?.let {
-
-                setPlayer(ForwardingPlayer(exoPlayer))
-                setUseNextAction(true)
-                setUsePreviousAction(true)
-                setUseStopAction(true)
-            }
-            setupMediaSession(context)?.let {
-                setMediaSessionToken(it.sessionCompatToken)
-            }
-        }
-        exoPlayer?.seekTo(0)
-    }
-    @SuppressLint("InlinedApi")
-    fun setupMediaSession(context: Context?): MediaSession? {
-        context?.let {
-            if (this.mediaSession != null) {
-                this.mediaSession!!.release()
-            }
-            this.mediaSession = this.exoPlayer?.let { it1 ->
-                MediaSession.Builder(
-                    context,
-                    it1
-                ).build()
-            }
-        }
-        return this.mediaSession
-    }
-    private fun sendSeekToEvent(positionMs: Long) {
-        exoPlayer?.seekTo(positionMs)
-        val event: MutableMap<String, Any> = HashMap()
-        event["event"] = "seek"
-        event["position"] = positionMs
-        eventSink.success(event)
-    }
-
-    fun disposeRemoteNotifications() {
-        if (playerNotificationManager != null) {
-            playerNotificationManager?.setPlayer(null)
-        }
-        bitmap = null
     }
 
     @SuppressLint("SuspiciousIndentation")
@@ -612,14 +472,6 @@ internal class BetterPlayer(
         event["event"] = if (inPip) "pipStart" else "pipStop"
         eventSink.success(event)
     }
-
-    fun disposeMediaSession() {
-        if (mediaSession != null) {
-            mediaSession?.release()
-        }
-        mediaSession = null
-    }
-
     fun setAudioTrack(name: String, index: Int) {
         try {
             val mappedTrackInfo = trackSelector.currentMappedTrackInfo
@@ -691,8 +543,6 @@ internal class BetterPlayer(
     }
 
     fun dispose() {
-        disposeMediaSession()
-        disposeRemoteNotifications()
         if (isInitialized) {
             exoPlayer?.stop()
         }
@@ -724,8 +574,6 @@ internal class BetterPlayer(
         private const val FORMAT_HLS = "hls"
         private const val FORMAT_RTSP = "rtsp"
         private const val FORMAT_OTHER = "other"
-        private const val DEFAULT_NOTIFICATION_CHANNEL = "BETTER_PLAYER_NOTIFICATION"
-        private const val NOTIFICATION_ID = 20772077
 
         //Clear cache without accessing BetterPlayerCache.
         fun clearCache(context: Context?, result: MethodChannel.Result) {
