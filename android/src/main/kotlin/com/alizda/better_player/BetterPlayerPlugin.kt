@@ -33,6 +33,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     private val videoPlayers = LongSparseArray<BetterPlayer>()
     private val dataSources = LongSparseArray<Map<String, Any?>>()
     private var flutterState: FlutterState? = null
+    private var currentNotificationTextureId: Long = -1
+    private var currentNotificationDataSource: Map<String, Any?>? = null
     private var activity: Activity? = null
     private var pipHandler: Handler? = null
     private var pipRunnable: Runnable? = null
@@ -156,6 +158,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                 result.success(null)
             }
             PLAY_METHOD -> {
+                setupNotification(player)
                 player.play()
                 result.success(null)
             }
@@ -352,6 +355,43 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         return null
     }
 
+    @UnstableApi private fun setupNotification(betterPlayer: BetterPlayer) {
+        try {
+            val textureId = getTextureId(betterPlayer)
+            if (textureId != null) {
+                val dataSource = dataSources[textureId]
+                if (textureId == currentNotificationTextureId && currentNotificationDataSource != null && dataSource != null && currentNotificationDataSource === dataSource) {
+                    return
+                }
+                currentNotificationDataSource = dataSource
+                currentNotificationTextureId = textureId
+                val showNotification = getParameter(dataSource, SHOW_NOTIFICATION_PARAMETER, false)
+                if (showNotification) {
+                    val title = getParameter(dataSource, TITLE_PARAMETER, "")
+                    val author = getParameter(dataSource, AUTHOR_PARAMETER, "")
+                    val imageUrl = getParameter(dataSource, IMAGE_URL_PARAMETER, "")
+                    val notificationChannelName =
+                        getParameter<String?>(dataSource, NOTIFICATION_CHANNEL_NAME_PARAMETER, null)
+                    val activityName =
+                        getParameter(dataSource, ACTIVITY_NAME_PARAMETER, "${flutterState?.applicationContext!!.applicationContext.packageName}.MainActivity")
+                    val packageName =
+                        getParameter(dataSource, PACKAGE_NAME_PARAMETER, flutterState?.applicationContext!!.applicationContext.packageName)
+                    betterPlayer.setupPlayerNotification(
+                        flutterState?.applicationContext!!,
+                        title, author, imageUrl, notificationChannelName, activityName, packageName
+                    )
+                }
+            }
+        } catch (exception: Exception) {
+            Log.e(TAG, "SetupNotification failed", exception)
+        }
+    }
+
+    @UnstableApi private fun removeOtherNotificationListeners() {
+        for (index in 0 until videoPlayers.size()) {
+            videoPlayers.valueAt(index).disposeRemoteNotifications()
+        }
+    }
     @Suppress("UNCHECKED_CAST")
     private fun <T> getParameter(parameters: Map<String, Any?>?, key: String, defaultValue: T): T {
         if (parameters?.containsKey(key) == true) {
@@ -391,6 +431,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
                     pipHandler!!.postDelayed(pipRunnable!!, 100)
                 } else {
                     player.onPictureInPictureStatusChanged(false)
+                    player.disposeMediaSession()
                     stopPipHandler()
                 }
             }
@@ -400,6 +441,7 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
     @UnstableApi private fun dispose(player: BetterPlayer, textureId: Long) {
         player.dispose()
+        removeOtherNotificationListeners()
         videoPlayers.remove(textureId)
         dataSources.remove(textureId)
         stopPipHandler()
@@ -460,9 +502,11 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         private const val WIDTH_PARAMETER = "width"
         private const val HEIGHT_PARAMETER = "height"
         private const val BITRATE_PARAMETER = "bitrate"
+        private const val SHOW_NOTIFICATION_PARAMETER = "showNotification"
         private const val TITLE_PARAMETER = "title"
         private const val AUTHOR_PARAMETER = "author"
         private const val IMAGE_URL_PARAMETER = "imageUrl"
+        private const val NOTIFICATION_CHANNEL_NAME_PARAMETER = "notificationChannelName"
         private const val OVERRIDDEN_DURATION_PARAMETER = "overriddenDuration"
         private const val NAME_PARAMETER = "name"
         private const val INDEX_PARAMETER = "index"
@@ -475,6 +519,8 @@ class BetterPlayerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         const val MAX_CACHE_SIZE_PARAMETER = "maxCacheSize"
         const val MAX_CACHE_FILE_SIZE_PARAMETER = "maxCacheFileSize"
         const val HEADER_PARAMETER = "header_"
+        const val ACTIVITY_NAME_PARAMETER = "activityName"
+        const val PACKAGE_NAME_PARAMETER = "packageName"
         const val MIN_BUFFER_MS = "minBufferMs"
         const val MAX_BUFFER_MS = "maxBufferMs"
         const val BUFFER_FOR_PLAYBACK_MS = "bufferForPlaybackMs"
