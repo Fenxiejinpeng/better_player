@@ -141,8 +141,6 @@ abstract class BetterPlayerControlsState<T extends StatefulWidget>
 
   void _showSpeedChooserWidget() {
     _showModalBottomSheet([
-      _buildSpeedRow(0.25),
-      _buildSpeedRow(0.5),
       _buildSpeedRow(0.75),
       _buildSpeedRow(1.0),
       _buildSpeedRow(1.25),

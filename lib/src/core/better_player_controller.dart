@@ -1326,3 +1326,27 @@ class BetterPlayerController {
     }
   }
 }
+
+/// add from hobo
+
+///Flag used to store auto play state.
+bool _isAutoPlayNextVideo = true;
+
+///Flag used to store auto play state.
+bool get isAutoPlayNextVideo => _isAutoPlayNextVideo;
+
+///Enables auto play mode in player.
+void enableAutoPlay() {
+  _isAutoPlayNextVideo = true;
+}
+
+///Disables auto play mode in player.
+void disableAutoPlay() {
+  _isAutoPlayNextVideo = false;
+}
+
+///Enables/disables auto play mode based on current auto play state.
+void toggleAutoPlay() {
+  _isAutoPlayNextVideo = !_isAutoPlayNextVideo;
+}
+}
