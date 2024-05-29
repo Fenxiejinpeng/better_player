@@ -1349,4 +1349,3 @@ void disableAutoPlay() {
 void toggleAutoPlay() {
   _isAutoPlayNextVideo = !_isAutoPlayNextVideo;
 }
-}
